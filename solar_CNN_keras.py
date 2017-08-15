@@ -10,13 +10,22 @@ out: Generated Power
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import pandas as import pdb
+import pandas as pd
 import datetime as dt
 import os
 import sys
 import seaborn as sns
 import glob
+import Load_data as ld
+import argparse
 matplotlib.use('Agg')
+
+from keras.models import Sequential, model_from_json, model_from_yaml
+from keras.layers.core import Dense, Activation, Flatten, Dropout
+from keras.layers import Convolution2D, MaxPooling2D, ZeroPadding2D
+from keras.callbacks import EarlyStopping
+from keras.optimizers import Adam, Adadelta, RMSprop
+# from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 SAVE_dir = "./RESULT/CNN_keras/"
 if not os.path.isdir(SAVE_dir):
@@ -82,7 +91,13 @@ def CNN_model2(activation="relu", loss="mean_squared_error", optimizer="Adadelta
     return model
 
 
-def CNN_model3(activation="relu", loss="mean_squared_error", optimizer="Adadelta"):
+def CNN_model3(
+    activation="relu",
+    loss="mean_squared_error",
+    optimizer="Adadelta",
+    layer=0,
+    height=0,
+    width=0):
     """
     INPUT -> [CONV -> RELU] -> OUT
     """
@@ -99,27 +114,27 @@ def CNN_model3(activation="relu", loss="mean_squared_error", optimizer="Adadelta
     return model
 
 
-def data_plot(model, target, img, batch_size=10, date="hoge", save_csv=False):
+def data_plot(model, target, img, batch_size=10, date="hoge", save_csv=True):
 
     num = []
     time = []
-    for i in range(target[0].shape[0]):
+    for i in range(target[:, 0].shape[0]):
         if i % 50 == 0:
             num.append(i)
-            time.append(int(target[0][i]))
-        if i == target[0].shape[0] - 1:
+            time.append(target[:, 0][i])
+        if i == target[:, 0].shape[0] - 1:
             num.append(i)
-            time.append(int(target[0][i]))
+            time.append(target[:, 0][i])
     img_ = img.transpose(0, 3, 1, 2).copy()
     pred = model.predict(img_, batch_size=batch_size, verbose=1).copy()
-    if pred.shape:
-        print(pred.shape)
-    if type(pred):
-        print(type(pred))
-    print(target[1].shape)
+    # if pred.shape:
+    #     print(pred.shape)
+    # if type(pred):
+    #     print(type(pred))
+    # print(target[1].shape)
     plt.figure()
     plt.plot(pred, label="Predicted")
-    plt.plot(target[1], label="Observed")
+    plt.plot(target[:, 1], label="Observed")
     plt.legend(loc='best')
     plt.title("Prediction tested on"+date)
     plt.xlabel("Time")
@@ -129,7 +144,7 @@ def data_plot(model, target, img, batch_size=10, date="hoge", save_csv=False):
 
     pred_ = pred.reshape(pred.shape[0])
     if save_csv is True:
-        save_target_and_prediction(target=target, pred=pred_, title=date)
+        save_target_and_prediction(target=target[:, 1], pred=pred_, title=date)
 
     filename = date + "_data"
     i = 0
@@ -149,23 +164,167 @@ def save_target_and_prediction(target, pred, title):
 
 def main():
 
+    """ 画像の日付リストの獲得
+    img_20170101 = np.array
+    みたいな感じで代入していく
+    また、ディレクトリのパスをdictionalyに入れておくことで、targetのロードのときに役たてる
+    """
+    img_dir_path_dic = {}
+    # img_name_list = []
+    date_list = []
+    img_tr = []
+    target_tr = []
+
+    for month_dir in os.listdir(DATA_DIR):
+        if not month_dir.startswith("."):
+            im_dir = os.path.join(DATA_DIR, month_dir)
+            for day_dir in os.listdir(im_dir):
+                if not day_dir.startswith("."):
+                    dir_path = os.path.join(im_dir, day_dir)
+                    img_dir_path_dic[day_dir[:8]] = dir_path
+                    # img_name_list.append("img_"+day_dir[:8])
+
+    """ ターゲットの読み込み
+    target_20170101 = np.array
+    みたいな感じで代入していく
+    dictionalyに保存したpathをうまく利用
+    """
+
+    for month_dir in os.listdir(TARGET_DIR):
+        if not month_dir.startswith("."):
+            im_dir = os.path.join(TARGET_DIR, month_dir)
+            for day_dir in os.listdir(im_dir):
+                if not day_dir.startswith("."):
+                    file_path = os.path.join(im_dir, day_dir)
+                    print("---- TRY ----- " + day_dir[3:11])
+                    try:
+                        target_tmp = ld.load_target(csv=file_path, imgdir=img_dir_path_dic[day_dir[3:11]])
+                        img_tmp = ld.load_image(imgdir=img_dir_path_dic[day_dir[3:11]], size=(224, 224), norm=True)
+                        if len(target_tmp) == len(img_tmp):
+                            target_tr.append(target_tmp)
+                            date_list.append(day_dir[3:11])
+                            img_tr.append(img_tmp)
+                            print("   OKAY")
+                        else:
+                            print("   数が一致しません on "+day_dir[3:11])
+                            print("   target: {}".format(len(target_tmp)))
+                            print("   img: {}".format(len(img_tmp)))
+                    except:
+                        print("Imageデータがありません on "+day_dir[3:11])
+
+# month_dir = os.listdir(TARGET_DIR)
+# im_dir = os.path.join(TARGET_DIR, month_dir[1])
+# day_dir = os.listdir(im_dir)
+# day_dir[1][3:11]
+#
+# img_dir_path_dic[day_dir[1][3:11]]
+# file_path = os.path.join(im_dir, day_dir[1])
+# file_path
+#
+# target_tmp = ld.load_target(csv=file_path, imgdir=img_dir_path_dic[day_dir[1][3:11]])
+# len(target_tmp)
+# print(target_tmp)
+#
+# arget_tr[0][:, 1].shape
+# target_tr_all = np.concatenate((
+#     target_tr[:]
+# ), axis=0)
+# target_tr_all[:, 1].shape
+# img_dir_path_dic["20161117"]
+# img_tr.append(ld.load_image(imgdir=img_dir_path_dic["20161117"], size=(224, 224), norm=True))
+# img_tmp = ld.load_image(imgdir=img_dir_path_dic["20161130"], size=(224, 224), norm=True)
+# len(img_tmp)
+# type(len(img_tr[0]))
+# len(img_tr[0])
+# type(len(target_tr[0][:, 1]))
+# if len(target_tr[0][:, 1]) == len(img_tr[0]):
+#     print("unko")
+#
+# aa
+
+    print("Data Load Done")
+
+    # traning
+    for i in range(len(date_list)):
+
+        ts_img = img_tr.pop(i)
+        ts_target = target_tr.pop(i)
+
+        img_tr_all = np.concatenate((
+            img_tr[:]
+        ), axis=0)
+
+        target_tr_all = np.concatenate((
+            target_tr[:]
+        ), axis=0)
+
+        # transpose for CNN INPUT shit
+        img_tr_all = img_tr_all.transpose(0, 3, 1, 2)
+        print(img_tr_all.shape)
+        # set image size
+        layer = img_tr_all.shape[1]
+        height = img_tr_all.shape[2]
+        width = img_tr_all.shape[3]
+
+        print("Image and Target Ready")
+
+        # parameter
+        activation = ["relu", "sigmoid"]
+        optimizer = ["adam", "adadelta", "rmsprop"]
+        nb_epoch = [10, 25, 50]
+        batch_size = [5, 10, 15]
+
+        # model set
+        model = None
+        model = CNN_model3(
+            activation="relu",
+            optimizer="Adadelta",
+            layer=layer,
+            height=height,
+            width=width)
+        # plot_model(model, to_file='CNN_model.png')
+
+        # initialize check
+        data_plot(
+            model=model, target=ts_target, img=ts_img, batch_size=10,
+            date=date_list[i], save_csv=True)
+
+        early_stopping = EarlyStopping(patience=3, verbose=1)
+
+        # Learning model
+        hist = model.fit(img_tr_all, target_tr_all[:, 1],
+                         epochs=nb_epoch[0],
+                         batch_size=batch_size[1],
+                         validation_split=0.1,
+                         callbacks=[early_stopping])
+        data_plot(
+            model=model, target=ts_target, img=ts_img, batch_size=10,
+            date=date_list[i], save_csv=True)
+        # evaluate
+        try:
+            img_tmp = ts_img.transpose(0, 3, 1, 2)
+            score = model.evaluate(img_tmp, ts_target[:, 1], verbose=1)
+            print("Evaluation "+date_list[i])
+            print('TEST LOSS: ', score[0])
+        except:
+            print("error in evaluation")
 
 
-
-
-
+        # put back data
+        img_tr.insert(i, ts_img)
+        target_tr.insert(i, ts_target)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--data_dir",
-        default="../data/",
+        default="../data/PV_IMAGE/",
         help="choose your data (image) directory"
     )
     parser.add_argument(
         "--target_dir",
-        default="../data/",
+        default="../data/PV_CSV/",
         help="choose your target dir"
     )
     args = parser.parse_args()
@@ -177,10 +336,11 @@ if __name__ == '__main__':
 
 
 
-os.path.exists(".py")
-glob.glob(os.getcwd()+"/*.py")
+# os.path.exists(".py")
+# glob.glob(os.getcwd()+"/*.py")
 
-
+# DATA_DIR = "../data/PV_IMAGE/"
+# TARGET_DIR = "../data/PV_CSV/"
 
 
 

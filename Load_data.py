@@ -5,13 +5,11 @@
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 import os
 import pandas as pd
 import datetime as dt
 import argparse
 from PIL import Image
-
 
 def load_image(imgdir, size, norm=True):
     """
@@ -30,7 +28,7 @@ def load_image(imgdir, size, norm=True):
                         img = img / 255.
                     images.append(img)
     img_array = np.array(images)
-    print("Image Load Done")
+    print("---------- Image Load Done")
     return img_array
 
 
@@ -59,7 +57,10 @@ def load_target(csv, imgdir):
 
     # 画像撮影時刻を補正する
     filelist = os.listdir(imgdir)
+    # ソートする (これでかなり悩んだ)
+    filelist.sort()
     time_start, time_end = check_target_time(filelist=filelist)
+    # print(time_start, time_end)
 
     # 時間をつきあわせる
     # i_start = 0
@@ -68,11 +69,11 @@ def load_target(csv, imgdir):
 
         if csv_tmp[i][0].replace(':', '') == time_start:
             i_start = i
-            print(i)
+            # print(i)
             # print(csv_tmp[i])
         elif csv_tmp[i][0].replace(':', '') == time_end:
             i_end = i
-            print(i)
+            # print(i)
             # print(csv_tmp[i]
 
     # 画像の時間インターバルの計算
@@ -82,7 +83,9 @@ def load_target(csv, imgdir):
     interval = delta_tmp.seconds
     target = csv_tmp[i_start:i_end+int(1):int(interval/6)]
 
-    print("CSV Load Done")
+    # print("CSV Load Done")
+    # print(len(target))
+    # print(target)
     return target
 
 
@@ -134,12 +137,17 @@ def check_target_time(filelist):
 
 
 def main():
-    """ 画像の読み込み
+    """ 画像の日付リストの獲得
     img_20170101 = np.array
     みたいな感じで代入していく
     また、ディレクトリのパスをdictionalyに入れておくことで、targetのロードのときに役たてる
     """
     img_dir_path_dic = {}
+    # img_name_list = []
+    target_name_list = []
+    img_tr = []
+    target_tr = []
+
     for month_dir in os.listdir(DATA_DIR):
         if not month_dir.startswith("."):
             im_dir = os.path.join(DATA_DIR, month_dir)
@@ -147,33 +155,43 @@ def main():
                 if not day_dir.startswith("."):
                     dir_path = os.path.join(im_dir, day_dir)
                     img_dir_path_dic[day_dir[:8]] = dir_path
-                    code = "img_{} = {}".format(
-                        day_dir[:8],
-                        load_image(imgdir=dir_path, size=(224, 224), norm=True))
-                    exec(code)
+                    # img_name_list.append("img_"+day_dir[:8])
 
     """ ターゲットの読み込み
     target_20170101 = np.array
     みたいな感じで代入していく
     dictionalyに保存したpathをうまく利用
     """
+
     for month_dir in os.listdir(TARGET_DIR):
         if not month_dir.startswith("."):
             im_dir = os.path.join(TARGET_DIR, month_dir)
             for day_dir in os.listdir(im_dir):
                 if not day_dir.startswith("."):
                     file_path = os.path.join(im_dir, day_dir)
-                    print(day_dir[3:11])
-                    code = "target_{} = {}".format(
-                        day_dir[3:11],
-                        load_target(csv=file_path, imgdir=img_dir_path_dic[day_dir[3:11]])
-                        )
-                    exec(code)
+                    # print(day_dir[3:11])
+                    try:
+                        target_tr.append(load_target(csv=file_path, imgdir=img_dir_path_dic[day_dir[3:11]]))
+                        target_name_list.append("target_"+day_dir[3:11])
+                        # img_tr.append(load_image(imgdir=dir_path, size=(224, 224), norm=True))
+                    except:
+                        print("Imageデータがありません at "+day_dir[3:11])
+    print("Data Load Done")
 
-    np.savez(
-        "image_from11to6_224.npz",
-        x1=
-    )
+
+
+# try:
+#     img_dir_path_dic["20170111"]
+# except:
+#     print("unko")
+    # np.savez(
+    #     "image_from11to6_224.npz",
+    #     *img_name_list[:]
+    # )
+    # np.savez(
+    #     "target_from11to6.npz",
+    #     *target_name_list[:]
+    # )
 
 
 if __name__ == '__main__':
@@ -186,12 +204,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--data_dir",
-        default="../data/",
+        default="../data/PV_IMAGE/",
         help="choose your data (image) directory"
     )
     parser.add_argument(
         "--target_dir",
-        default="../data/",
+        default="../data/PV_CSV/",
         help="choose your target dir"
     )
     args = parser.parse_args()
@@ -202,60 +220,6 @@ if __name__ == '__main__':
 
 
 ############################################
-DATA_DIR = "../data/PV_IMAGE/"
-TARGET_DIR = "../data/PV_CSV/"
-
-def test():
-    a = np.random.rand(10, 10)
-    return a
-
-""" 画像の読み込み
-img_20170101 = np.array
-みたいな感じで代入していく
-また、ディレクトリのパスをdictionalyに入れておくことで、targetのロードのときに役たてる
-"""
-img_dir_path_dic = {}
-img_name_list = []
-for month_dir in os.listdir(DATA_DIR):
-    if not month_dir.startswith("."):
-        im_dir = os.path.join(DATA_DIR, month_dir)
-        for day_dir in os.listdir(im_dir):
-            if not day_dir.startswith("."):
-                dir_path = os.path.join(im_dir, day_dir)
-                img_dir_path_dic[day_dir[:8]] = dir_path
-                img_name_list.append("img_"+day_dir[:8])
-                # code = "img_{} = {}".format(
-                #     day_dir[:8],
-                #     load_image(imgdir=dir_path, size=(224, 224), norm=True))
-                # exec(code)
-                code = "img_{} = {}".format(
-                    day_dir[:8],
-                    test()
-                    )
-                exec(code)
-
-""" ターゲットの読み込み
-target_20170101 = np.array
-みたいな感じで代入していく
-dictionalyに保存したpathをうまく利用
-"""
-for month_dir in os.listdir(TARGET_DIR):
-    if not month_dir.startswith("."):
-        im_dir = os.path.join(TARGET_DIR, month_dir)
-        for day_dir in os.listdir(im_dir):
-            if not day_dir.startswith("."):
-                file_path = os.path.join(im_dir, day_dir)
-                print(day_dir[3:11])
-                code = "target_{} = {}".format(
-                    day_dir[3:11],
-                    load_target(csv=file_path, imgdir=img_dir_path_dic[day_dir[3:11]])
-                    )
-                exec(code)
-
-
-
-
-
-
-
+# DATA_DIR = "../data/PV_IMAGE/"
+# TARGET_DIR = "../data/PV_CSV/"
 # end
