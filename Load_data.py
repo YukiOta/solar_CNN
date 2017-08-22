@@ -10,14 +10,17 @@ import pandas as pd
 import datetime as dt
 import argparse
 from PIL import Image
+from scipy import ndimage
 
-def load_image(imgdir, size, norm=True):
+def load_image(imgdir, size, norm=True, median=True, median_size=3, mean=True):
     """
     input: image directory
     output: numpy array
     """
     images = []
-    for filename in os.listdir(imgdir):
+    imglist = os.listdir(imgdir)
+    imglist.sort()
+    for filename in imglist:
         if not filename.startswith('.'):
             if len(filename) > 10:
                 img = Image.open(os.path.join(imgdir, filename))
@@ -26,6 +29,8 @@ def load_image(imgdir, size, norm=True):
                     img = np.array(img)
                     if norm is True:
                         img = img / 255.
+                    if median is True:
+                        img = ndimage.median_filter(img, median_size)
                     images.append(img)
     img_array = np.array(images)
     print("---------- Image Load Done")
@@ -135,6 +140,14 @@ def check_target_time(filelist):
 
     return time_correct_s, time_correct_e
 
+def compute_mean(image_array):
+    """全画像の平均をとって、平均を返す
+    入力：画像データセット (np配列を想定してる) [枚数, height, width, rgb]
+    出力：平均画像
+    """
+    print("conmpute mean image")
+    mean_image = np.ndarray.mean(image_array, axis=0)
+    return mean_image
 
 def main():
     """ 画像の日付リストの獲得

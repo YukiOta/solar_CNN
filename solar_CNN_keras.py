@@ -14,6 +14,7 @@ import pandas as pd
 import datetime as dt
 import os
 import sys
+import time
 import seaborn as sns
 import glob
 import Load_data as ld
@@ -172,13 +173,19 @@ def main():
     img_dir_path_dic = {}
     # img_name_list = []
     date_list = []
+    error_date_list = []
     img_tr = []
     target_tr = []
 
-    for month_dir in os.listdir(DATA_DIR):
+    img_month_list = os.listdir(DATA_DIR)
+    img_month_list.sort()
+
+    for month_dir in img_month_list:
         if not month_dir.startswith("."):
             im_dir = os.path.join(DATA_DIR, month_dir)
-            for day_dir in os.listdir(im_dir):
+            img_day_list = os.listdir(im_dir)
+            img_day_list.sort()
+            for day_dir in img_day_list:
                 if not day_dir.startswith("."):
                     dir_path = os.path.join(im_dir, day_dir)
                     img_dir_path_dic[day_dir[:8]] = dir_path
@@ -190,10 +197,15 @@ def main():
     dictionalyに保存したpathをうまく利用
     """
 
-    for month_dir in os.listdir(TARGET_DIR):
+    target_month_list = os.listdir(TARGET_DIR)
+    target_month_list.sort()
+
+    for month_dir in target_month_list:
         if not month_dir.startswith("."):
             im_dir = os.path.join(TARGET_DIR, month_dir)
-            for day_dir in os.listdir(im_dir):
+            target_day_list = os.listdir(im_dir)
+            target_day_list.sort()
+            for day_dir in target_day_list:
                 if not day_dir.startswith("."):
                     file_path = os.path.join(im_dir, day_dir)
                     print("---- TRY ----- " + day_dir[3:11])
@@ -209,54 +221,43 @@ def main():
                             print("   数が一致しません on "+day_dir[3:11])
                             print("   target: {}".format(len(target_tmp)))
                             print("   img: {}".format(len(img_tmp)))
+                            error_date_list.append(day_dir[3:11])
+
                     except:
-                        print("Imageデータがありません on "+day_dir[3:11])
+                        print("   Imageデータがありません on "+day_dir[3:11])
 
-# month_dir = os.listdir(TARGET_DIR)
-# im_dir = os.path.join(TARGET_DIR, month_dir[1])
-# day_dir = os.listdir(im_dir)
-# day_dir[1][3:11]
-#
-# img_dir_path_dic[day_dir[1][3:11]]
-# file_path = os.path.join(im_dir, day_dir[1])
-# file_path
-#
-# target_tmp = ld.load_target(csv=file_path, imgdir=img_dir_path_dic[day_dir[1][3:11]])
-# len(target_tmp)
-# print(target_tmp)
-#
-# arget_tr[0][:, 1].shape
-# target_tr_all = np.concatenate((
-#     target_tr[:]
-# ), axis=0)
-# target_tr_all[:, 1].shape
-# img_dir_path_dic["20161117"]
-# img_tr.append(ld.load_image(imgdir=img_dir_path_dic["20161117"], size=(224, 224), norm=True))
-# img_tmp = ld.load_image(imgdir=img_dir_path_dic["20161130"], size=(224, 224), norm=True)
-# len(img_tmp)
-# type(len(img_tr[0]))
-# len(img_tr[0])
-# type(len(target_tr[0][:, 1]))
-# if len(target_tr[0][:, 1]) == len(img_tr[0]):
-#     print("unko")
-#
-# aa
+    # errorの日を保存
+    with open(SAVE_dir+"error_date.txt", "w") as f:
+        f.write(str(error_date_list))
 
-    print("Data Load Done")
+    print("Data Load Done. Starting traning.....")
+    print("training on days " + str(date_list))
+    test_error_list = []
 
     # traning
     for i in range(len(date_list)):
 
+        print("-----Training on "+str(img_day_list[i])+"-----")
+        training_start_time = time.time()
+
+        ts_img = 0
+        ts_target = 0
         ts_img = img_tr.pop(i)
         ts_target = target_tr.pop(i)
 
+        img_tr_all = 0
+        target_tr_all = 0
         img_tr_all = np.concatenate((
             img_tr[:]
         ), axis=0)
-
         target_tr_all = np.concatenate((
             target_tr[:]
         ), axis=0)
+
+        # テストデータと訓練データから、訓練データでとった平均を引く
+        mean_img = ld.compute_mean(image_array=img_tr_all)
+        img_tr_all -= mean_img
+        ts_img -= mean_img
 
         # transpose for CNN INPUT shit
         img_tr_all = img_tr_all.transpose(0, 3, 1, 2)
@@ -306,6 +307,7 @@ def main():
             score = model.evaluate(img_tmp, ts_target[:, 1], verbose=1)
             print("Evaluation "+date_list[i])
             print('TEST LOSS: ', score[0])
+            test_error_list.append(score[0])
         except:
             print("error in evaluation")
 
@@ -313,6 +315,13 @@ def main():
         # put back data
         img_tr.insert(i, ts_img)
         target_tr.insert(i, ts_target)
+
+        tr_elapsed_time = time.time() - training_start_time
+        print("elapsed_time:{0}".format(tr_elapsed_time)+" [sec]")
+
+    # error_lossの日を保存
+    with open(SAVE_dir+"test_loss.txt", "w") as f:
+        f.write(str(test_error_list))
 
 
 if __name__ == '__main__':
@@ -329,7 +338,12 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
     DATA_DIR, TARGET_DIR = args.data_dir, args.target_dir
+
+    # 時間の表示
+    start = time.time()
     main()
+    elapsed_time = time.time - start
+    print("elapsed_time:{0}".format(elapsed_time)+" [sec]")
 
 
 
