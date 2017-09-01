@@ -48,7 +48,9 @@ def load_target(csv, imgdir):
     out: target [time, Generated Power, temperature]
     target[:, 0] : time
     target[:, 1] : power
-    target[:, 0] : temperature
+    target[:, 2] : temperature
+    $ target.shape
+    -> (number, channel) ex) (164, 3)
     """
     # csvファイルの読み込み
     df = pd.read_csv(csv)
