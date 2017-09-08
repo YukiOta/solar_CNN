@@ -32,9 +32,9 @@ def load_image(imgdir, size, norm=True, median=True, median_size=3, mean=True):
                     if median is True:
                         img = ndimage.median_filter(img, median_size)
                     images.append(img)
-    img_array = np.array(images)
+    images = np.array(images, dtype=np.float32)
     print("---------- Image Load Done")
-    return img_array
+    return images
 
 
 def load_target(csv, imgdir):

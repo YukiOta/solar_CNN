@@ -20,6 +20,7 @@ import seaborn as sns
 import glob
 import Load_data as ld
 import argparse
+import gc
 # matplotlib.use('Agg')
 
 from keras.models import Sequential, model_from_json, model_from_yaml
@@ -29,9 +30,12 @@ from keras.callbacks import EarlyStopping
 from keras.optimizers import Adam, Adadelta, RMSprop
 # from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-SAVE_dir = "./RESULT/CNN_keras_multiple_bands/"
+SAVE_dir = "./RESULT/CNN_keras_multiple_bands_100/"
 if not os.path.isdir(SAVE_dir):
     os.makedirs(SAVE_dir)
+
+# DATA_DIR = "../data/PV_IMAGE/"
+# TARGET_DIR = "../data/PV_CSV/"
 
 def CNN_model1(activation="relu", loss="mean_squared_error", optimizer="Adadelta"):
     """
@@ -206,18 +210,19 @@ def main():
 
     for month_dir in target_month_list:
         if not month_dir.startswith("."):
+        # if month_dir == "201705":
             im_dir = os.path.join(TARGET_DIR, month_dir)
             target_day_list = os.listdir(im_dir)
             target_day_list.sort()
             for day_dir in target_day_list:
                 if not day_dir.startswith("."):
                     file_path = os.path.join(im_dir, day_dir)
-                    # if COUNT <= 5:
+                    # if COUNT < 3:
                     #     COUNT += 1
                     print("---- TRY ----- " + day_dir[3:11])
                     try:
                         target_tmp = ld.load_target(csv=file_path, imgdir=img_dir_path_dic[day_dir[3:11]])
-                        img_tmp = ld.load_image(imgdir=img_dir_path_dic[day_dir[3:11]], size=(224, 224), norm=True)
+                        img_tmp = ld.load_image(imgdir=img_dir_path_dic[day_dir[3:11]], size=(100, 100), norm=True)
                         if len(target_tmp) == len(img_tmp):
                             target_tr.append(target_tmp)  # (number, channel)
                             date_list.append(day_dir[3:11])
@@ -253,10 +258,13 @@ def main():
 
         ts_img = 0
         ts_target = 0
-        ts_img = img_tr.pop(i)
-        ts_target = target_tr.pop(i)
-        # ts_img = img_tr.pop(0)
-        # ts_target = target_tr.pop(0)
+        ts_img_pool = 0
+        ts_target_pool = 0
+        # i=1
+        ts_img_pool = img_tr.pop(i)
+        ts_target_pool = target_tr.pop(i)
+        ts_img = ts_img_pool.copy()
+        ts_target = ts_target_pool.copy()
 
         img_tr_all = 0
         target_tr_all = 0
@@ -282,7 +290,7 @@ def main():
         # 1.トレーニング画像
         # リストの定義
         tmp = []  # 一時的に画像をプールする
-        BAND_NUM = 5  # まとめる枚数の定義 (共通)
+        BAND_NUM = 3  # まとめる枚数の定義 (共通)
         img_n_sec = []  # n枚バンド化した画像を追加するリスト
         img_band_array = 0  # 最終的に使うnumpy配列
         for j in range(len(img_tr_all)):
@@ -295,6 +303,7 @@ def main():
             else:
                 break
         img_band_array = np.array(img_n_sec, dtype=float)
+        del img_n_sec
         print(img_band_array.shape)
 
         # 2.テスト画像
@@ -312,6 +321,8 @@ def main():
             else:
                 break
         img_band_array_ts = np.array(img_n_sec_ts, dtype=float)
+        del img_n_sec_ts
+        gc.collect()
         print(img_band_array_ts.shape)
 
         # 次にターゲット(発電量)
@@ -421,8 +432,10 @@ def main():
             print("error in save model")
 
         # put back data
-        img_tr.insert(i, img_band_array_ts)
-        target_tr.insert(i, target_band_array_ts)
+        img_tr.insert(i, ts_img_pool)
+        target_tr.insert(i, ts_target_pool)
+        # img_tr.insert(1, img_band_array_ts)
+        # target_tr.insert(1, target_band_array_ts)
 
         tr_elapsed_time = time.time() - training_start_time
         print("elapsed_time:{0}".format(tr_elapsed_time)+" [sec]")
@@ -430,7 +443,6 @@ def main():
     # error_lossの日を保存
     with open(SAVE_dir+"test_loss.txt", "w") as f:
         f.write(str(test_error_list))
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -459,15 +471,13 @@ if __name__ == '__main__':
 
 
 
-# DATA_DIR = "../data/PV_IMAGE/"
-# TARGET_DIR = "../data/PV_CSV/"
 
 
-
-
-
-
-
+img_tmp = ld.load_image(imgdir=img_dir_path_dic["20170502"], size=(100, 100), norm=True)
+img_tmp2 = 2*img_tmp
+del img_tmp
+gc.collect()
+gc.collect()
 
 
 

@@ -28,7 +28,7 @@ from keras.callbacks import EarlyStopping
 from keras.optimizers import Adam, Adadelta, RMSprop
 # from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-SAVE_dir = "./RESULT/CNN_keras/"
+SAVE_dir = "./RESULT/CNN_keras_100_for5/"
 if not os.path.isdir(SAVE_dir):
     os.makedirs(SAVE_dir)
 
@@ -201,7 +201,8 @@ def main():
     target_month_list.sort()
 
     for month_dir in target_month_list:
-        if not month_dir.startswith("."):
+        # if not month_dir.startswith("."):
+        if month_dir == "201705":
             im_dir = os.path.join(TARGET_DIR, month_dir)
             target_day_list = os.listdir(im_dir)
             target_day_list.sort()
@@ -211,7 +212,7 @@ def main():
                     print("---- TRY ----- " + day_dir[3:11])
                     try:
                         target_tmp = ld.load_target(csv=file_path, imgdir=img_dir_path_dic[day_dir[3:11]])
-                        img_tmp = ld.load_image(imgdir=img_dir_path_dic[day_dir[3:11]], size=(224, 224), norm=True)
+                        img_tmp = ld.load_image(imgdir=img_dir_path_dic[day_dir[3:11]], size=(100, 100), norm=True)
                         if len(target_tmp) == len(img_tmp):
                             target_tr.append(target_tmp)
                             date_list.append(day_dir[3:11])
@@ -242,8 +243,13 @@ def main():
 
         ts_img = 0
         ts_target = 0
-        ts_img = img_tr.pop(i)
-        ts_target = target_tr.pop(i)
+        ts_img_pool = 0
+        ts_target_pool = 0
+        # i=1
+        ts_img_pool = img_tr.pop(i)
+        ts_target_pool = target_tr.pop(i)
+        ts_img = ts_img_pool.copy()
+        ts_target = ts_target_pool.copy()
 
         img_tr_all = 0
         target_tr_all = 0
@@ -313,8 +319,8 @@ def main():
 
 
         # put back data
-        img_tr.insert(i, ts_img)
-        target_tr.insert(i, ts_target)
+        img_tr.insert(i, ts_img_pool)
+        target_tr.insert(i, ts_target_pool)
 
         tr_elapsed_time = time.time() - training_start_time
         print("elapsed_time:{0}".format(tr_elapsed_time)+" [sec]")
