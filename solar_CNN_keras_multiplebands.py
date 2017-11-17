@@ -25,36 +25,48 @@ import gc
 
 from keras.models import Sequential, model_from_json, model_from_yaml
 from keras.layers.core import Dense, Activation, Flatten, Dropout
+from keras.layers.normalization import BatchNormalization
 from keras.layers import Convolution2D, MaxPooling2D, ZeroPadding2D
 from keras.callbacks import EarlyStopping
 from keras.optimizers import Adam, Adadelta, RMSprop
+
 # from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-SAVE_dir = "./RESULT/CNN_keras_multiple_bands_100/"
+SAVE_dir = "./RESULT/CNN_keras_multiple_bands_100_model3_corrected/"
 if not os.path.isdir(SAVE_dir):
     os.makedirs(SAVE_dir)
 
 # DATA_DIR = "../data/PV_IMAGE/"
 # TARGET_DIR = "../data/PV_CSV/"
 
-def CNN_model1(activation="relu", loss="mean_squared_error", optimizer="Adadelta"):
+def CNN_model1(
+    activation="relu",
+    loss="mean_squared_error",
+    optimizer="Adadelta",
+    layer=0,
+    height=0,
+    width=0):
     """
     INPUT -> [CONV -> RELU -> CONV -> RELU -> POOL]*2 -> [FC -> RELU]*2 -> OUT
     """
     model = Sequential()
 
     model.add(ZeroPadding2D((1, 1), input_shape=(layer, height, width)))
+    model.add(BatchNormalization())
     model.add(Convolution2D(16, 3, 3, border_mode='same'))
     model.add(Activation('relu'))
     model.add(ZeroPadding2D((1, 1)))
+    model.add(BatchNormalization())
     model.add(Convolution2D(16, 3, 3))
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
 
     model.add(ZeroPadding2D((1, 1)))
+    model.add(BatchNormalization())
     model.add(Convolution2D(32, 3, 3))
     model.add(Activation('relu'))
     model.add(ZeroPadding2D((1, 1)))
+    model.add(BatchNormalization())
     model.add(Convolution2D(32, 3, 3))
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -71,18 +83,26 @@ def CNN_model1(activation="relu", loss="mean_squared_error", optimizer="Adadelta
     return model
 
 
-def CNN_model2(activation="relu", loss="mean_squared_error", optimizer="Adadelta"):
+def CNN_model2(
+    activation="relu",
+    loss="mean_squared_error",
+    optimizer="Adadelta",
+    layer=0,
+    height=0,
+    width=0):
     """
     INPUT -> [CONV -> RELU -> POOL]*2 -> FC -> RELU -> OUT
     """
     model = Sequential()
 
     model.add(ZeroPadding2D((1, 1), input_shape=(layer, height, width)))
+    model.add(BatchNormalization())
     model.add(Convolution2D(16, 3, 3, border_mode='same'))
     model.add(Activation(activation))
     model.add(MaxPooling2D(pool_size=(2, 2)))
 
     model.add(ZeroPadding2D((1, 1)))
+    model.add(BatchNormalization())
     model.add(Convolution2D(32, 3, 3))
     model.add(Activation(activation))
     model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -109,8 +129,8 @@ def CNN_model3(
     """
     model = Sequential()
 
-    model.add(ZeroPadding2D((1, 1), input_shape=(layer, height, width)))
-    model.add(Convolution2D(16, 3, 3, border_mode='same'))
+    model.add(ZeroPadding2D((1, 1), input_shape=(layer, height, width), data_format="channels_first"))
+    model.add(Convolution2D(16, 3, 3, border_mode='same', data_format="channels_first"))
     model.add(Activation('relu'))
 
     model.add(Flatten())
@@ -392,6 +412,12 @@ def main():
 
         # model set
         model = None
+        # model = CNN_model3(
+        #     activation="relu",
+        #     optimizer="Adadelta",
+        #     layer=layer,
+        #     height=height,
+        #     width=width)
         model = CNN_model3(
             activation="relu",
             optimizer="Adadelta",
@@ -473,11 +499,11 @@ if __name__ == '__main__':
 
 
 
-img_tmp = ld.load_image(imgdir=img_dir_path_dic["20170502"], size=(100, 100), norm=True)
-img_tmp2 = 2*img_tmp
-del img_tmp
-gc.collect()
-gc.collect()
+# img_tmp = ld.load_image(imgdir=img_dir_path_dic["20170502"], size=(100, 100), norm=True)
+# img_tmp2 = 2*img_tmp
+# del img_tmp
+# gc.collect()
+# gc.collect()
 
 
 
