@@ -39,6 +39,7 @@ if not os.path.isdir(SAVE_dir):
 # DATA_DIR = "../data/PV_IMAGE/"
 # TARGET_DIR = "../data/PV_CSV/"
 
+# models{{{
 def CNN_model1(
     activation="relu",
     loss="mean_squared_error",
@@ -137,7 +138,7 @@ def CNN_model3(
     model.add(Dense(1))
 
     model.compile(loss=loss, optimizer=optimizer, metrics=['accuracy'])
-    return model
+    return model# }}}
 
 
 def data_plot(model, target, img, batch_size=10, date="hoge", save_csv=True):
